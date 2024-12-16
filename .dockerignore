@@ -9,3 +9,4 @@ profiling
 *.yml
 LICENSE
 csv_inputs
+*.tif

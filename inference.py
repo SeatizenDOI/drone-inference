@@ -7,6 +7,10 @@ from argparse import Namespace, ArgumentParser
 
 from src.libs.parse_opt import get_list_sessions
 
+from src.capture_images import CaptureImages
+from src.savers import MultilabelPredictions
+from src.multilabel_classifier import MultiLabelClassifierCUDA
+
 def parse_args() -> Namespace:
 
     # Parse command line arguments.
@@ -20,8 +24,14 @@ def parse_args() -> Namespace:
 
     # Path of input.
     ap.add_argument("-pfol", "--path_folder", default="/media/bioeos/E/drone_serge_test/", help="Load all images from a folder of sessions")
-    ap.add_argument("-pses", "--path_session", default="/home/bioeos/Documents/Bioeos/annotations_some_image/20240524_REU-LE-PORT_HUMAN-1_01/", help="Load all images from a single session")
+    ap.add_argument("-pses", "--path_session", default="/media/bioeos/E/drone_serge_test/20231201_REU-HERMITAGE_UAV_01", help="Load all images from a single session")
     ap.add_argument("-pcsv", "--path_csv_file", default="./csv_inputs/stleu.csv", help="Load all images from session write in the provided csv file")
+
+
+    # Choose how to used multilabel model.
+    ap.add_argument("-mlu", "--multilabel_url", default="lombardata/drone-DinoVdeau-from-probs-large-2024_11_15-batch-size32_freeze_probs", help="Hugging face repository")
+    ap.add_argument("-nml", "--no_multilabel", action="store_true", help="Didn't used multilabel model")
+
 
     # Orthophoto arguments.
     ap.add_argument('-crs', '--matching_crs', type=str, default="32740", help="Default CRS of the project.")
@@ -52,6 +62,18 @@ def pipeline_seatizen(opt: Namespace):
 
 
     print("\n-- Load the pipeline ...", end="\n\n")
+    capture_images = CaptureImages(opt)
+
+    # Load Hugging face model.
+    multilabel_model = None 
+    if opt.no_multilabel:
+        multilabel_model = None 
+    else:
+        multilabel_model = MultiLabelClassifierCUDA(opt.multilabel_url, batch_size)
+
+    multilabel_saver = None if opt.no_multilabel else MultilabelPredictions(multilabel_model.classes_name)
+    if opt.no_save:
+        multilabel_saver = None
 
     # Stat
     sessions_fail = []
@@ -69,17 +91,28 @@ def pipeline_seatizen(opt: Namespace):
 
         # Clean sessions if needed
         path_IA = Path(session, "PROCESSED_DATA/IA")
-        # Clean PROCESSED_DATA/IA folder
         if Path.exists(path_IA) and opt.clean:
             print("\t-- Clean session \n\n")
             shutil.rmtree(path_IA)
         path_IA.mkdir(exist_ok=True, parents=True)
 
-        pipeline = ()
+        multilabel_scores_csv_name = Path(session, "PROCESSED_DATA/IA", f"{session.name}_{opt.multilabel_url.replace('/', '_')}_scores.csv")
+
+        # Setup pipeline for current session
+        capture_images.setup(session)
+        if multilabel_saver:
+            multilabel_saver.setup(multilabel_scores_csv_name) 
+
+        pipeline = (
+            capture_images |
+            multilabel_model | 
+            multilabel_saver
+        )
+
         # Iterate through pipeline
         start_t = datetime.now()
         print("\t-- Start prediction session \n\n")
-        progress = tqdm(total=0,
+        progress = tqdm(total=capture_images.frame_count,
                         disable=opt.no_progress)
         
         try:
@@ -91,6 +124,10 @@ def pipeline_seatizen(opt: Namespace):
             return
         finally:
             progress.close()
+
+        # Pipeline cleanup.
+        if multilabel_saver:
+            multilabel_saver.cleanup()
 
         print(f"\n -- Elapsed time: {datetime.now() - start_t} seconds\n\n")
 

@@ -5,4 +5,10 @@ dependencies:
   - python=3.12.8
   - pip=24.2
   - pip:
+    - pandas
+    - tqdm
+    - torch
+    - torchvision
+    - huggingface_hub
+    - transformers
     
