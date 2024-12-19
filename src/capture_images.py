@@ -18,11 +18,9 @@ class CaptureImages(Pipeline):
 
         self.args = args
         self.batch_size = int(self.args.batch_size) if self.args.batch_size.isnumeric() else 1
-        self.frame_count = 0
-
 
     # All path variable not defined in constructor are defined in setup and nowhere else.
-    def setup(self, session: Path):
+    def setup(self, session: Path) -> None:
         """ Reset image loaded """
         # Session path
         self.session = session
@@ -45,24 +43,20 @@ class CaptureImages(Pipeline):
             except:
                 raise NameError("Cannot get GSD value")
         
+        # Check if orthophoto is in the correct crs.
+        with rasterio.open(self.orthophoto_filepath) as ortho:
+            if ortho.crs != rasterio.crs.CRS.from_epsg(self.args.matching_crs):
+                raise NameError(f"Orthophoto crs doesn't match with desired args {self.args.matching_crs}")
+
+        self.transformer = Transformer.from_crs(self.args.matching_crs, "EPSG:4326", always_xy=True)
+
+    def generator(self):
 
         self.tile_size = int(self.args.tiles_size_meters // (self.GSD_mean / 100))
         self.size_inline_tile = self.tile_size**2
         self.x_overlap = int(self.tile_size * self.args.h_shift)
         self.y_overlap = int(self.tile_size * self.args.v_shift)
         
-        
-        # Check if orthophoto is in the correct crs.
-        with rasterio.open(self.orthophoto_filepath) as ortho:
-            self.frame_count = (ortho.height // (self.tile_size - self.y_overlap)) * (ortho.width // (self.tile_size - self.x_overlap)) // self.batch_size
-            if ortho.crs != rasterio.crs.CRS.from_epsg(self.args.matching_crs):
-                raise NameError(f"Orthophoto crs doesn't match with desired args {self.args.matching_crs}")
-
-        self.transformer = Transformer.from_crs(self.args.matching_crs, "EPSG:4326", always_xy=True)
-
-
-    def generator(self):
-
         counter, tiles, tiles_name, tiles_position = 0, [], [], []
         with rasterio.open(self.orthophoto_filepath) as src:
             for i in range(0, src.height, self.tile_size - self.y_overlap):
@@ -88,7 +82,7 @@ class CaptureImages(Pipeline):
                     # Get bounds.
                     tile_box = None
                     with rasterio.open(
-                        "aled.tif", "w",
+                        f"/tmp/tmp_tile_uav_{self.session.name}.tif", "w",
                         driver="GTiff",
                         height=tile.shape[1],
                         width=tile.shape[2],
@@ -126,7 +120,6 @@ class CaptureImages(Pipeline):
                     except StopIteration:
                         return
         yield None
-        
         
     
     def cleanup(self):

@@ -6,6 +6,7 @@ from datetime import datetime
 from argparse import Namespace, ArgumentParser
 
 from src.libs.parse_opt import get_list_sessions
+from src.libs.predictions_raster_tools import create_rasters_for_classes
 
 from src.capture_images import CaptureImages
 from src.savers import MultilabelPredictions
@@ -58,8 +59,6 @@ def pipeline_seatizen(opt: Namespace):
     print("\n-- Parse input options", end="\n\n")
     
     batch_size = int(opt.batch_size) if opt.batch_size.isnumeric() else 1
-    min_prediction = int(opt.min_prediction) if opt.min_prediction.isnumeric() else 100
-
 
     print("\n-- Load the pipeline ...", end="\n\n")
     capture_images = CaptureImages(opt)
@@ -71,9 +70,9 @@ def pipeline_seatizen(opt: Namespace):
     else:
         multilabel_model = MultiLabelClassifierCUDA(opt.multilabel_url, batch_size)
 
-    multilabel_saver = None if opt.no_multilabel else MultilabelPredictions(multilabel_model.classes_name)
+    multilabel_savers = None if opt.no_multilabel else MultilabelPredictions(multilabel_model.classes_name)
     if opt.no_save:
-        multilabel_saver = None
+        multilabel_savers = None
 
     # Stat
     sessions_fail = []
@@ -100,20 +99,19 @@ def pipeline_seatizen(opt: Namespace):
 
         # Setup pipeline for current session
         capture_images.setup(session)
-        if multilabel_saver:
-            multilabel_saver.setup(multilabel_scores_csv_name) 
+        if multilabel_savers:
+            multilabel_savers.setup(multilabel_scores_csv_name) 
 
         pipeline = (
             capture_images |
             multilabel_model | 
-            multilabel_saver
+            multilabel_savers
         )
 
         # Iterate through pipeline
         start_t = datetime.now()
         print("\t-- Start prediction session \n\n")
-        progress = tqdm(total=capture_images.frame_count,
-                        disable=opt.no_progress)
+        progress = tqdm(disable=opt.no_progress)
         
         try:
             for _ in pipeline:
@@ -126,8 +124,8 @@ def pipeline_seatizen(opt: Namespace):
             progress.close()
 
         # Pipeline cleanup.
-        if multilabel_saver:
-            multilabel_saver.cleanup()
+        if multilabel_savers:
+            multilabel_savers.cleanup()
 
         print(f"\n -- Elapsed time: {datetime.now() - start_t} seconds\n\n")
 
@@ -137,7 +135,7 @@ def pipeline_seatizen(opt: Namespace):
             print("\t-- Creating raster for each class \n\n")
             if not opt.no_prediction_raster:
                 pass
-                # create_rasters_for_classes(predictions_scores_gps, multilabel_model.classes_name, path_IA, session_name, 'linear')
+                create_rasters_for_classes(multilabel_scores_csv_name, multilabel_model.classes_name, path_IA, session.name, 'linear')
             
             print(f"\nSession {session.name} end succesfully ! ", end="\n\n\n")
 

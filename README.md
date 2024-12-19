@@ -21,13 +21,12 @@
 
 </div>
 
-Drone-inference is used to apply [Jacques](https://github.com/IRDG2OI/jacques) and a multilabel model from hugging-face like [DinoVdeau](https://github.com/SeatizenDOI/DinoVdeau)
+Drone-inference is used to apply a multilabel model from hugging-face like [DinoVdeau](https://github.com/SeatizenDOI/DinoVdeau)
 
-This repository works with sessions that contain a metadata.csv file in a METADATA folder. The metadata.csv file needs to have a column name that includes the term "relative_file_path".
+This repository works with sessions that contain an orthophoto in a folder called PROCESSED_DATA/PHOTOGRAMMETRY
 
 At the end of the process, this code will create a PROCESSED_DATA/IA folder that contains prediction and score files in CSV format, as well as raster files of the predictions.
 
-The METADATA folder will also have two additional files, which are the predictions with GPS coordinates and IMU values.
 
 * [Docker](./docker.README.md)
 * [Installation](#installation)

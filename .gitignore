@@ -4,3 +4,4 @@ models
 profiling
 *.ipynb
 *.tif
+*.log

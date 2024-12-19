@@ -1,6 +1,5 @@
 from .pipeline import Pipeline
 
-
 class  MultilabelPredictions(Pipeline):
     """Pipeline task to save Multilabel predictions"""
 
