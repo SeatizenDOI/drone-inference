@@ -1,9 +1,12 @@
 import json
+import torch
+from PIL import Image
 import torch.nn as nn
 from pathlib import Path
 from huggingface_hub import snapshot_download
-from transformers import Dinov2Config, Dinov2ForImageClassification
+from transformers import Dinov2Config, Dinov2ForImageClassification, AutoImageProcessor
 
+from .engine_tools import build_and_save_engine_from_onnx
 
 PATH_TO_MULTILABEL_DIRECTORY = "models/multilabel"
 
@@ -38,3 +41,36 @@ def getDynoConfig(repo_name):
     
     return config
 
+def get_multilabel_engine(repo_name, batch_size):
+    path_to_multilabel_engine = Path(Path.cwd(), PATH_TO_MULTILABEL_DIRECTORY, repo_name, f"multilabel_bs_{batch_size}.engine")
+    # Check for engine file.
+    if Path.exists(path_to_multilabel_engine):
+        return str(path_to_multilabel_engine)
+
+    # If engine not found, build model and next build onnx and finally build engine.
+    path_to_multilabel_onnx = Path(Path.cwd(), PATH_TO_MULTILABEL_DIRECTORY, repo_name, f"multilabel_bs_{batch_size}.onnx")
+    
+    if not Path.exists(path_to_multilabel_onnx):
+        print("-- Building multilabel onnx file")
+        build_onnx_file_for_multilabel(repo_name, path_to_multilabel_onnx, batch_size)
+
+    print("-- Building multilabel engine file")
+    build_and_save_engine_from_onnx(str(path_to_multilabel_onnx), str(path_to_multilabel_engine))
+
+    return str(path_to_multilabel_engine)
+
+def build_onnx_file_for_multilabel(repo_name, path_to_multilabel_onnx, batch_size):
+    model = NewHeadDinoV2ForImageClassification.from_pretrained(repo_name)
+    image = Image.open(Path(Path.cwd(), "inputs/image_mutilabel_setup.png"))
+    image_processor = AutoImageProcessor.from_pretrained(repo_name)
+    inputs = image_processor([image for _ in range(batch_size)], return_tensors="pt")
+
+    torch.onnx.export(
+        model,
+        tuple(inputs.values()),
+        f=path_to_multilabel_onnx,
+        input_names=['pixel_values'],
+        output_names=['logits'],
+        do_constant_folding=True,
+        opset_version=14,
+    )

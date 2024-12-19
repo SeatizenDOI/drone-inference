@@ -10,6 +10,12 @@ from src.libs.parse_opt import get_list_sessions
 from src.capture_images import CaptureImages
 from src.savers import MultilabelPredictions
 from src.multilabel_classifier import MultiLabelClassifierCUDA
+from src.libs.predictions_raster_tools import create_rasters_for_classes
+
+from src.multilabel_classifier import MultiLabelClassifierTRT
+from src.libs.common_cuda import cuda_initialisation
+
+
 
 def parse_args() -> Namespace:
 
@@ -30,6 +36,7 @@ def parse_args() -> Namespace:
 
     # Choose how to used multilabel model.
     ap.add_argument("-mlu", "--multilabel_url", default="lombardata/drone-DinoVdeau-from-probs-large-2024_11_15-batch-size32_freeze_probs", help="Hugging face repository")
+    ap.add_argument("-mlgpu", "--multilabel_gpu", action="store_true", help="Speedup inference with tensorrt")
     ap.add_argument("-nml", "--no_multilabel", action="store_true", help="Didn't used multilabel model")
 
 
@@ -50,7 +57,6 @@ def parse_args() -> Namespace:
     ap.add_argument("-is", "--index_start", default="0", help="Choose from which index to start")
     ap.add_argument("-ip", "--index_position", default="-1", help="if != -1, take only session at selected index")
     ap.add_argument("-bs", "--batch_size", default="1", help="Numbers of frames processed in one time")
-    ap.add_argument("-minp", "--min_prediction", default="100", help="Minimum for keeping predictions after inference.")
 
     return ap.parse_args()
 
@@ -58,8 +64,8 @@ def pipeline_seatizen(opt: Namespace):
     print("\n-- Parse input options", end="\n\n")
     
     batch_size = int(opt.batch_size) if opt.batch_size.isnumeric() else 1
-    min_prediction = int(opt.min_prediction) if opt.min_prediction.isnumeric() else 100
 
+    cuda_initialisation(opt.multilabel_gpu)
 
     print("\n-- Load the pipeline ...", end="\n\n")
     capture_images = CaptureImages(opt)
@@ -68,6 +74,8 @@ def pipeline_seatizen(opt: Namespace):
     multilabel_model = None 
     if opt.no_multilabel:
         multilabel_model = None 
+    elif opt.multilabel_gpu:
+        multilabel_model = MultiLabelClassifierTRT(opt.multilabel_url, batch_size)
     else:
         multilabel_model = MultiLabelClassifierCUDA(opt.multilabel_url, batch_size)
 
@@ -137,7 +145,7 @@ def pipeline_seatizen(opt: Namespace):
             print("\t-- Creating raster for each class \n\n")
             if not opt.no_prediction_raster:
                 pass
-                # create_rasters_for_classes(predictions_scores_gps, multilabel_model.classes_name, path_IA, session_name, 'linear')
+                create_rasters_for_classes(multilabel_scores_csv_name, multilabel_model.classes_name, path_IA, session.name, 'linear')
             
             print(f"\nSession {session.name} end succesfully ! ", end="\n\n\n")
 

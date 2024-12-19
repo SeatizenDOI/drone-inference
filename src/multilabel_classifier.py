@@ -4,7 +4,8 @@ from transformers import AutoImageProcessor
 
 from .pipeline import Pipeline
 
-from .libs.multilabel_model import NewHeadDinoV2ForImageClassification, getDynoConfig
+from .libs.multilabel_model import NewHeadDinoV2ForImageClassification, getDynoConfig, get_multilabel_engine
+from .libs.engine_tools import NeuralNetworkGPU
 
 
 class MultiLabelClassifier(Pipeline):
@@ -57,6 +58,39 @@ class MultiLabelClassifierCUDA(MultiLabelClassifier):
                 data["multilabel_scores"] = []
                 for logit in model_outputs["logits"]:
                     scores = self.sigmoid(logit.cpu().numpy())
+                    data["multilabel_scores"].append([str(a) for a in scores])
+
+                yield data
+
+
+class MultiLabelClassifierTRT(MultiLabelClassifier):
+    """Multilabel classifier with TensorRt"""
+
+    def __init__(self, repo_name, batch_size):
+        super().__init__(repo_name, batch_size)
+
+        self.model = NeuralNetworkGPU(get_multilabel_engine(repo_name, batch_size))
+
+    def generator(self):
+
+        data = None
+        stop = False
+        while self.has_next() and not stop:
+            try:
+                # Buffer the pipeline stream.
+                data = next(self.source)
+            except StopIteration:
+                stop = True
+
+            if not stop and data:
+                # Check if image is not useless
+
+                inputs = self.image_processor(data["frames"], return_tensors="pt")["pixel_values"]
+                outputs = np.split(self.model.detect(np.stack(inputs))[0], self.batch_size)
+
+                data["multilabel_scores"] = []
+                for output in outputs:
+                    scores = self.sigmoid(output)
                     data["multilabel_scores"].append([str(a) for a in scores])
 
                 yield data

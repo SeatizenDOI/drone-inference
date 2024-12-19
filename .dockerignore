@@ -10,3 +10,4 @@ profiling
 LICENSE
 csv_inputs
 *.tif
+*.log
