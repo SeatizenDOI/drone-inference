@@ -2,7 +2,7 @@
 FROM python:3.12-slim-bullseye
 
 # Install lib, create user.
-RUN apt-get update && apt-get install libexpat1 libexpat1-dev && \
+RUN apt-get update && apt-get install -y --no-install-recommends libexpat1 libexpat1-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && \
     useradd -ms /bin/bash seatizen && \
     pip install --no-cache-dir \
