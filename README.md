@@ -37,22 +37,11 @@ At the end of the process, this code will create a PROCESSED_DATA/IA folder that
 
 ## Installation
 
-***This installation guide was written a few months after the actual installation and has not yet been tested.***
-
 All the sessions was proceed on this hardware (Dell Precision 7770):
 
 - Intel Core i9-12950HX
 - 64.0 Gio RAM
 - NVIDIA RTX A3000 12GB Laptop GPU
-
-And the software was :
-
-- Ubuntu 22.04.4 LTS
-- Nvidia driver version 535.171.04, Cuda 12.1
-- nvcc (NVIDIA Cuda compiler driver) : Cuda compilation tools, release 12.1, V12.1.66 | Build cuda_12.1.r12.1/compiler.32415258_0
-- cudnn 8.9.7
-- TensorRT 8.6.1
-
 
 To ensure a consistent environment for all users, this project uses a Conda environment defined in a `inference_env.yml` file. Follow these steps to set up your environment:
 
