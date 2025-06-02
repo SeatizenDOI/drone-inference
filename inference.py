@@ -134,7 +134,6 @@ def pipeline_seatizen(opt: Namespace):
             # Create raster predictions
             print("\t-- Creating raster for each class \n\n")
             if not opt.no_prediction_raster:
-                pass
                 create_rasters_for_classes(multilabel_scores_csv_name, multilabel_model.classes_name, path_IA, session.name, 'linear')
             
             print(f"\nSession {session.name} end succesfully ! ", end="\n\n\n")
