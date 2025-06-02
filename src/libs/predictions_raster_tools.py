@@ -123,5 +123,5 @@ def create_rasters_for_classes(predictions_csv_path, classes, output_path, sessi
         # Calculate initial resolution based on median distances
         resol =  np.max([lat_spacing, lon_spacing])
         cube = make_geocube(vector_data=gdf, resolution=(-resol, resol))
-        raster_path = os.path.join(output_path, f"{sessiontag}_{target_class.replace('/', '_')}_raster.tif")
+        raster_path = os.path.join(output_path, f"{sessiontag}_{target_class.replace('/', '_')}_classification_multilabel_raster.tif")
         cube[target_class].rio.to_raster(raster_path)
