@@ -54,13 +54,13 @@ class CaptureImages(Pipeline):
 
         self.tile_size = int(self.args.tiles_size_meters // (self.GSD_mean / 100))
         self.size_inline_tile = self.tile_size**2
-        self.x_overlap = int(self.tile_size * self.args.h_shift)
-        self.y_overlap = int(self.tile_size * self.args.v_shift)
+        self.x_overlap = int(self.tile_size * (1 - self.args.h_shift))
+        self.y_overlap = int(self.tile_size * (1 - self.args.v_shift))
         
         counter, tiles, tiles_name, tiles_position = 0, [], [], []
         with rasterio.open(self.orthophoto_filepath) as src:
-            for i in range(0, src.height, self.tile_size - self.y_overlap):
-                for j in range(0, src.width, self.tile_size - self.x_overlap):
+            for i in range(0, src.height - self.tile_size + 1, self.y_overlap):
+                for j in range(0, src.width - self.tile_size + 1, self.x_overlap):
                     window = Window(j, i, self.tile_size, self.tile_size)
                     transform_window = src.window_transform(window)
 

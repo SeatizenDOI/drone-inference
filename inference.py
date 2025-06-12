@@ -25,7 +25,7 @@ def parse_args() -> Namespace:
 
     # Path of input.
     ap.add_argument("-pfol", "--path_folder", default="/media/bioeos/E/drone_serge_test/", help="Load all images from a folder of sessions")
-    ap.add_argument("-pses", "--path_session", default="/media/bioeos/E/drone_serge_test/20231201_REU-HERMITAGE_UAV_01", help="Load all images from a single session")
+    ap.add_argument("-pses", "--path_session", default="/media/bioeos/E/drone/serge_temp/20231207_REU-HERMITAGE_UAV-01_04", help="Load all images from a single session")
     ap.add_argument("-pcsv", "--path_csv_file", default="./csv_inputs/stleu.csv", help="Load all images from session write in the provided csv file")
 
 
